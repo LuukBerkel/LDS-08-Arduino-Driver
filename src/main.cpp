@@ -15,5 +15,6 @@ void setup() {
 void loop() { //Choose Serial1 or Serial2 as required
   while (Serial2.available()) {
     Serial.print(char(Serial2.read()));
+    
   }
 }

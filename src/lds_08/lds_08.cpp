@@ -49,22 +49,57 @@ bool lds_08::validate_crc(uint8_t* buffer, int lenght, uint8_t crc){
     return crc == calculated_crc;
 }
 
+void lds_08::pwm_worker( void (*pwm_callback)(lds_08_settings, int)){
+  lds_08::pwm_callback = pwm_callback;
+}
+
 void lds_08::settings(int speed, int angle = 360, int pwm_freq = 10000){
   lds_08::lds_08_setting.speed =    speed;
   lds_08::lds_08_setting.angle =    angle;
   lds_08::lds_08_setting.pwm_freq = pwm_freq;
-}
-
-lds_08_frame lds_08::read_frame(){
-  // checking if serial is available
-  if (Serial2.available() && Serial2.read() == 0x54){
-    uint8_t lenght = Serial2.read() - 
-
+  if (lds_08::pwm_callback != nullptr){
+    lds_08::pwm_callback(lds_08::lds_08_setting, lds_08::pwm_pin);
   }
 }
 
-void lds_08::begin(){
+// todo: uses angle setting to throw out invalid angle.
+bool lds_08::parse_buffer(lds_08_frame* frame, uint8_t* buffer, int lenght){
+  int data_length = lenght - 8;
+  
+}
+
+bool lds_08::read_frame(lds_08_frame* frame){
+  if (frame == nullptr){
+    return false;
+  }
+
+  if (Serial2.available() && Serial2.read() == 0x54){
+    uint8_t lenght = Serial2.read();
+    for (uint32_t i = 0; i < lenght - 1; i++) {
+      lds_08::raw_buffer_ptr[i] = Serial2.read();
+    }
+
+    if (!lds_08::validate_crc(lds_08::raw_buffer_ptr, lenght, Serial.read())){
+      return false;
+    }
+    if(!lds_08::parse_buffer(frame, lds_08::raw_buffer_ptr, lenght)){
+      return false;
+    }
+
+    return true;
+  }
+}
+
+bool lds_08::begin(){
     Serial2.begin(115200, SERIAL_8N1, lds_08::rx_pin);
+
+    lds_08::data_buffer_ptr = (lds_08_data*)malloc(sizeof(uint8_t)*256);
+    lds_08::raw_buffer_ptr = (uint8_t*)malloc(sizeof(uint8_t)*256);
+    if (lds_08::data_buffer_ptr == nullptr || lds_08::raw_buffer_ptr == nullptr) {
+      return false;
+    }
+
+    return true;
 }
 
 lds_08::lds_08(int rx_pin, int pwm_pin){
@@ -73,6 +108,6 @@ lds_08::lds_08(int rx_pin, int pwm_pin){
 }
 
 lds_08::~lds_08(){
-  // deleting buffer. 
-  free(lds_08::lds_08_allocated_data_head);
+  free(lds_08::data_buffer_ptr);
+  free(lds_08::raw_buffer_ptr);
 }
