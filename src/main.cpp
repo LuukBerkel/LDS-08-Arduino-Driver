@@ -1,20 +1,39 @@
 #include <Arduino.h>
+#include "ld08/ld08.hpp"
 
 #define RXD2 16
-#define TXD2 17
+#define PWM  -1
+
+ld08 lidar = ld08(RXD2, PWM);
+ld08_frame frame;
 
 void setup() {
-  // Note the format for setting a serial port is as follows: Serial2.begin(baud-rate, protocol, RX pin, TX pin);
   Serial.begin(115200);
-  //Serial1.begin(9600, SERIAL_8N1, RXD2, TXD2);
-  Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
-  Serial.println("Serial Txd is on pin: "+String(TX));
-  Serial.println("Serial Rxd is on pin: "+String(RX));
+  Serial.println("Starting demo of lidar ld08");
+
+  lidar.begin();
+  Serial.println("Succesfully started lidar ld08");
 }
 
 void loop() { //Choose Serial1 or Serial2 as required
-  while (Serial2.available()) {
-    Serial.print(char(Serial2.read()));
-    
+  if (!lidar.read_frame(&frame)){
+    Serial.println("Failed to read frame");
+  } else {
+    Serial.print("Lidar min angle: ");
+    Serial.println(frame.start_angle / 100);
+    Serial.print("Lidar max angle: ");
+    Serial.println(frame.end_angle / 100);
+    Serial.print("Rotation speed: ");
+    Serial.println(frame.rotation_speed);
+    Serial.print("measurments: [");
+    for (uint8_t i = 0; i < 12; i++)
+    {
+      Serial.print("[d: ");
+      Serial.print(frame.data_buffer_ptr[i].distance);
+      Serial.print("c: ");
+      Serial.print(frame.data_buffer_ptr[i].confidence);
+      Serial.print("],");
+    }
+    Serial.println("]");
   }
 }
