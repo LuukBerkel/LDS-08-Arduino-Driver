@@ -9,9 +9,6 @@
 
 #include <stdint.h> 
 
-#define ANGLE_TO_RADIAN(angle) ((angle) * 3141.59 / 180000)
-#define RADIAN_TO_ANGLE(angle) ((angle) * 180000 / 3141.59)
-
 /// @brief this enum defines the read package values for the lds_02.
 enum
 {
@@ -29,20 +26,20 @@ typedef struct {
 
 /// @brief this struct definition is for the data of the lds_02.
 typedef struct __attribute__((packed)){             
-  uint16_t distance;
-  uint8_t confidence;
+  uint16_t distance;                  // Distance in mm.
+  uint8_t confidence;                 // Confidence from 0 to 255.
 } ld08_data;   
 
 /// @brief this struct definition is for the frames of the lds_02.
 typedef struct __attribute__((packed)){         
-  uint8_t header;
-  uint8_t ver_len;
-  uint16_t speed;
-  uint16_t start_angle;
-  ld08_data point[POINT_PER_PACK];
-  uint16_t end_angle;
-  uint16_t timestamp;
-  uint8_t crc8;
+  uint8_t header;                     // Header of message. 
+  uint8_t ver_len;                    // Message length.
+  uint16_t speed;                     // Rotation speed in degrees per second.
+  uint16_t start_angle;               // End angle position * 100 in degrees.
+  ld08_data point[POINT_PER_PACK];    // Measured data in array.
+  uint16_t end_angle;                 // End angle position * 100 in degrees.
+  uint16_t timestamp;                 // Time elapsed in ms.
+  uint8_t crc8;                       // Cycle redundency check.
 } ld08_frame;     
 
 /// @brief this class definition is for controlling the lidar.
