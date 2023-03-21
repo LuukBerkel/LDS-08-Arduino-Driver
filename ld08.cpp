@@ -82,22 +82,6 @@ bool ld08::read_frame(ld08_frame* frame){
     return false;
   }
 
-
-
-
-
-
-
-
-
-
-
-
-  // if(!ld08::parse_buffer(frame, ld08::raw_buffer_ptr, lenght)){
-  //   Serial.println("Parsing failed");
-  //   return false;
-  // }
-
   return true;
 }
 
