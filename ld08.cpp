@@ -92,8 +92,6 @@ void ld08::begin(){
 ld08::ld08(int rx_pin, int pwm_pin){
   ld08::rx_pin = rx_pin;
   ld08::pwm_pin = pwm_pin;
-
-
 }
 
 ld08::~ld08(){}
