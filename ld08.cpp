@@ -10,7 +10,7 @@
 #include <Arduino.h>
 
 /// @brief this is the crc table that is used to validate the crc.
-static const uint8_t crcTable[256] =
+static const uint8_t CrCTable[256] =
 {
   0x00, 0x4d, 0x9a, 0xd7, 0x79, 0x34, 0xe3,
   0xae, 0xf2, 0xbf, 0x68, 0x25, 0x8b, 0xc6, 0x11, 0x5c, 0xa9, 0xe4, 0x33,
@@ -36,25 +36,14 @@ static const uint8_t crcTable[256] =
   0x5a, 0x06, 0x4b, 0x9c, 0xd1, 0x7f, 0x32, 0xe5, 0xa8
 };
 
-bool ld08::validate_crc(uint8_t cmd_byte, uint8_t len_byte, uint8_t* buffer){
-    if (buffer == nullptr) {
-        return false;
+bool ld08::validate_crc(ld08_frame* frame){
+    uint8_t* buffer = (uint8_t*)frame;
+    uint8_t crc = 0;
+    for (uint32_t i = 0; i < sizeof(ld08_frame) - 1; i++) {
+      crc = CrCTable[(crc ^ buffer[i]) & 0xff];
     }
 
-    uint8_t  calculated_crc = 0;
-    calculated_crc = crcTable[(calculated_crc ^ cmd_byte) & 0xff];
-    calculated_crc = crcTable[(calculated_crc ^ len_byte) & 0xff];
-    for (uint32_t i = 0; i < len_byte-1; i++) {
-      calculated_crc = crcTable[(calculated_crc^ buffer[i]) & 0xff];
-    }
-
-    if (buffer[len_byte-1] != calculated_crc){
-      Serial.print(buffer[len_byte-1]);
-      Serial.print(",");
-      Serial.println(calculated_crc);
-    }
-
-    return buffer[len_byte-1] == calculated_crc;
+    return crc == frame->crc8;
 }
 
 void ld08::pwm_worker( void (*pwm_callback)(ld08_settings, int)){
@@ -70,50 +59,44 @@ void ld08::settings(int speed, int angle, int pwm_freq){
   }
 }
 
-uint16_t parse_to_uint16_t(uint8_t high, uint8_t low){
-  uint16_t high_byte = high << 8; 
-  uint16_t low_byte = low;
-  return high_byte ^ low_byte;
-}
-
-// todo: uses angle setting to throw out invalid angle.
-bool ld08::parse_buffer(ld08_frame* frame, uint8_t* buffer, int lenght){
-  if (frame == nullptr || buffer == nullptr){
-    return false;
-  }
-
-  frame->rotation_speed = parse_to_uint16_t(buffer[1], buffer[0]);
-  frame->start_angle = parse_to_uint16_t(buffer[3], buffer[2]);
-  frame->end_angle = parse_to_uint16_t(buffer[41], buffer[40]);
-  frame->timestamp = parse_to_uint16_t(buffer[42], buffer[43]);
-
-  for (uint32_t i = 0; i < 12; i++) {
-    frame->data_buffer_ptr[i].distance =  parse_to_uint16_t(buffer[5+i*3], buffer[4+i*3]);
-    frame->data_buffer_ptr[i].confidence =  buffer[6+i*3];
-  }  
-
-  return true;
-}
-
 bool ld08::read_frame(ld08_frame* frame){
   if (frame == nullptr){
     return false;
   }
 
-  Serial.print("Bytes available: ");
-  Serial.println(Serial2.available());
-  while(Serial2.available() && Serial2.read() != 0x54);
+  // Reading measeruments
+  while(Serial2.read() != PKG_HEADER && Serial2.read() != PKG_VER_LEN);
+  Serial2.readBytes(ld08::raw_buffer_ptr, PKG_VER_LEN+1);
+  frame->header = PKG_HEADER;
+  frame->ver_len = PKG_VER_LEN;
 
-  uint8_t lenght = Serial2.read();
-  if (lenght != 44){
+  // Coping base information.
+  uint8_t* data = ((uint8_t*)frame + 2);
+  void* compare = memcpy(data, raw_buffer_ptr, PKG_VER_LEN+1);
+  if (compare == nullptr || data != compare){
     return false;
   }
-  Serial2.readBytes(ld08::raw_buffer_ptr, lenght);
 
-  if(!ld08::parse_buffer(frame, ld08::raw_buffer_ptr, lenght)){
-    Serial.println("Parsing failed");
+  // Validation of crc
+  if (!validate_crc(frame)){
     return false;
   }
+
+
+
+
+
+
+
+
+
+
+
+
+  // if(!ld08::parse_buffer(frame, ld08::raw_buffer_ptr, lenght)){
+  //   Serial.println("Parsing failed");
+  //   return false;
+  // }
 
   return true;
 }
